@@ -16,23 +16,8 @@ let fruitY = 60;
 let gameOver = false;
 let punten = 0;
 const snake_offset = 2;
-let lastFrameTimestamp = 0;
-
-
-window.originalSetTimeout = window.setTimeout;
-window.originalClearTimeout = window.clearTimeout;
-window.activeTimers = 0;
-
-window.setTimeout = function(func, delay) {
-    window.activeTimers++;
-    return window.originalSetTimeout(func, delay);
-};
-
-window.clearTimeout = function(timerID) {
-    window.activeTimers--;
-    window.originalClearTimeout(timerID);
-};
-
+let lastUpdateTimestamp;
+let shouldUpdateSnake = false;
 
 const giphy = {
 	baseURL: "https://api.giphy.com/v1/gifs/",
@@ -59,28 +44,24 @@ function keyPressed(event){
 	if (event.key === 'ArrowRight' && snake_dir_x !== -1){
 		snake_dir_y = 0;
 		snake_dir_x = 1;
-		clearTimeoutAndDraw();
+
+		shouldUpdateSnake = true;
 	}
 	else if (event.key === 'ArrowLeft' && snake_dir_x !== 1){
 		snake_dir_y = 0;
 		snake_dir_x = -1;
-		clearTimeoutAndDraw();
+		shouldUpdateSnake = true;
 	}
 	else if (event.key === 'ArrowDown' && snake_dir_y !== -1){
 		snake_dir_x = 0;
 		snake_dir_y = 1;
-		clearTimeoutAndDraw();
+		shouldUpdateSnake = true;
 	}
 	else if (event.key === 'ArrowUp' && snake_dir_y !== 1){
 		snake_dir_x = 0;
 		snake_dir_y = -1;
-		clearTimeoutAndDraw();
+		shouldUpdateSnake = true;
 	}
-}
-
-function clearTimeoutAndDraw(){
-	window.clearTimeout(lastFrameTimer);
-	draw();
 }
 
 function getRandomInt(max) {
@@ -135,6 +116,7 @@ function updateSnake(){
 }
 
 function detectGameOver(){
+	return;
 	for(let i = 0; i < snakeBodyY.length; i++){
 		if (head_x === snakeBodyX[i] && head_y === snakeBodyY[i]){
 			gameOver = true;
@@ -151,27 +133,19 @@ function detectGameOver(){
 	}
 }
 
-let lastFrameTimer = undefined;
-
-function scheduleNextFrame(){
-	window.clearTimeout(lastFrameTimer);
-	lastFrameTimer = setTimeout(() => {
-		window.activeTimers--;
-		window.requestAnimationFrame(draw);
-	}, frameWait);
-}
-
 function setScoreText(){
 	const scoreLabel = document.getElementById("score_label");
 	scoreLabel.innerText = `Score: ${punten}`
 }
 
 function draw(timestamp){
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	if (timestamp - lastFrameTimestamp > 1000){
+	if (shouldUpdateSnake || timestamp - lastUpdateTimestamp > 200){
 		updateSnake();
-		lastFrameTimestamp = timestamp;
+		lastUpdateTimestamp = timestamp;
+		shouldUpdateSnake = false;
 	}
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	detectGameOver();
 	drawFruit();
 	drawSnake();
