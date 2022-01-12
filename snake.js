@@ -5,6 +5,14 @@ class Point {
         this.x = x;
         this.y = y;
     }
+
+    equals(other) {
+        return this.x === other.x && this.y === other.y;
+    }
+
+    clone() {
+        return new Point(this.x, this.y);
+    }
 }
 
 const SCALE_FACTOR = 20;
@@ -39,13 +47,13 @@ class Snake {
 
     updatePosition() {
         this.bodyPositions.pop(this.bodyPositions.length - 1);
-        this.bodyPositions.unshift({ ...this.headPos });
+        this.bodyPositions.unshift(this.headPos.clone());
         this.headPos.x += this.direction.x;
         this.headPos.y += this.direction.y;
     }
 
     eatFruit(fruit) {
-        this.bodyPositions.push({ ...fruit.position });
+        this.bodyPositions.push(fruit.position.clone());
     }
 }
 
@@ -146,27 +154,11 @@ function randomPointOutsideSnake(snake) {
         return;
 
     let candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
-    while (true) {
-        let failed = false;
-        candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
-
-        for (let snakePos of snake.bodyPositions.concat([snake.headPos])) {
-            if (snakePos.x === candidate.x && snakePos.y === candidate.y) {
-                failed = true;
-                break;
-            }
-        }
-
-        if (!failed)
-            break;
+    while([snake.headPos, ...snake.bodyPositions].find(x => x.equals(candidate)) !== undefined)
+    {
+    	console.log("problem");
+    	candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
     }
-
-    // TODO this also does not work for some reason
-    // while(_.includes([snake.headPos, ...snake.bodyPositions], candidate))
-    // {
-    // 	console.log("problem");
-    // 	candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
-    // }
 
     return candidate;
 }
@@ -174,7 +166,7 @@ function randomPointOutsideSnake(snake) {
 function detectFruitEaten(gameState) {
     let snake = gameState.snake;
     let fruit = gameState.fruit;
-    if (_.isEqual(snake.headPos, fruit.position)) {
+    if (snake.headPos.equals(fruit.position)) {
         snake.eatFruit(fruit);
         gameState.fruit = new Fruit(
             randomPointOutsideSnake(snake),
@@ -184,21 +176,10 @@ function detectFruitEaten(gameState) {
     }
 }
 
-
-
 function detectGameOver(gameState) {
     let snake = gameState.snake;
-    // TODO: why does this not work??
-    // if (_.includes(snake.bodyPositions, snake.headPos))
-    // {
-    // 	gameState.isGameOver = true;
-    // }
-    for (let i = 0; i < snake.bodyPositions.length; i++) {
-        if (snake.headPos.x === snake.bodyPositions[i].x &&
-            snake.headPos.y === snake.bodyPositions[i].y) {
-            gameState.isGameOver = true;
-        }
-    }
+    if (snake.bodyPositions.find(x => x.equals(snake.headPos)) !== undefined)
+    	gameState.isGameOver = true;
     if (
         snake.headPos.x < 0 ||
         snake.headPos.y < 0 ||
