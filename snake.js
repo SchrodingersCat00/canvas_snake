@@ -145,7 +145,7 @@ function randomPointOutsideSnake(snake) {
 	if (snake.bodyPositions.length === BOARD_SIZE*BOARD_SIZE - 1)
 		return;
 
-	let candidate;
+	let candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
 	while(true) {
 		let failed = false;
 		candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
@@ -160,6 +160,13 @@ function randomPointOutsideSnake(snake) {
 		if (!failed)
 			break;
 	}
+	
+	// TODO this also does not work for some reason
+	// while(_.includes([snake.headPos, ...snake.bodyPositions], candidate))
+	// {
+	// 	console.log("problem");
+	// 	candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
+	// }
 
 	return candidate;
 }
@@ -167,8 +174,7 @@ function randomPointOutsideSnake(snake) {
 function detectFruitEaten(gameState){
 	let snake = gameState.snake;
 	let fruit = gameState.fruit;
-	if (snake.headPos.x === fruit.position.x &&
-		snake.headPos.y === fruit.position.y)
+	if (_.isEqual(snake.headPos, fruit.position))
 	{
 		snake.eatFruit(fruit);
 		gameState.fruit = new Fruit(
@@ -183,9 +189,14 @@ function detectFruitEaten(gameState){
 
 function detectGameOver(gameState){
 	let snake = gameState.snake;
+	// TODO: why does this not work??
+	// if (_.includes(snake.bodyPositions, snake.headPos))
+	// {
+	// 	gameState.isGameOver = true;
+	// }
 	for(let i = 0; i < snake.bodyPositions.length; i++){
-		if (snake.headPos.x === snake.bodyPositions[i].x 
-			&& snake.headPos.y === snake.bodyPositions[i].y)
+		if (snake.headPos.x === snake.bodyPositions[i].x &&
+			snake.headPos.y === snake.bodyPositions[i].y)
 		{
 			gameState.isGameOver = true;
 		}
