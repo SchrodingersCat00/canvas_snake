@@ -119,22 +119,22 @@ function handleInput(gameState) {
     return function (event) {
         let snake = gameState.snake;
 
-        if (event.key === 'ArrowRight' && snake.direction.x !== -1) {
+        if (event.key === 'ArrowRight' && snake.direction.x === 0) {
             snake.direction.x = 1;
             snake.direction.y = 0;
             gameState.shouldUpdateSnake = true;
         }
-        else if (event.key === 'ArrowLeft' && snake.direction.x !== 1) {
+        else if (event.key === 'ArrowLeft' && snake.direction.x === 0) {
             snake.direction.x = -1;
             snake.direction.y = 0;
             gameState.shouldUpdateSnake = true;
         }
-        else if (event.key === 'ArrowDown' && snake.direction.y !== -1) {
+        else if (event.key === 'ArrowDown' && snake.direction.y === 0) {
             snake.direction.x = 0;
             snake.direction.y = 1;
             gameState.shouldUpdateSnake = true;
         }
-        else if (event.key === 'ArrowUp' && snake.direction.y !== 1) {
+        else if (event.key === 'ArrowUp' && snake.direction.y === 0) {
             snake.direction.x = 0;
             snake.direction.y = -1;
             gameState.shouldUpdateSnake = true;
@@ -195,7 +195,7 @@ function setScoreText(score) {
 }
 
 let gameState = new GameState;
-document.addEventListener('keyup', handleInput(gameState));
+document.addEventListener('keydown', handleInput(gameState));
 let previousUpdateTimestamp;
 
 function draw(timestamp) {
