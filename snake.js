@@ -1,157 +1,240 @@
-const canvas = document.getElementById('snake_canvas');
-canvas.width = 500;
-canvas.height = 500;
-const ctx = canvas.getContext('2d');
+'use strict';
 
-let head_x = 100;
-let head_y = 0;
-let snake_dir_x = 1;
-let snake_dir_y = 0;
-let snake_size = 20;
-let frameWait = 200;
-let snakeBodyX = [80, 60, 40, 20, 0];
-let snakeBodyY = [0, 0, 0, 0, 0];
-let fruitX = 60;
-let fruitY = 60;
-let gameOver = false;
-let punten = 0;
-const snake_offset = 2;
-let lastUpdateTimestamp;
-let shouldUpdateSnake = false;
-
-const giphy = {
-	baseURL: "https://api.giphy.com/v1/gifs/",
-	apiKey: "0UTRbFtkMxAplrohufYco5IY74U8hOes",
-	tag: "fail",
-	type: "random",
-	rating: "pg-13"
-};
-
-let giphyURL = encodeURI(
-	giphy.baseURL +
-		giphy.type +
-		"?api_key=" +
-		giphy.apiKey +
-		"&tag=" +
-		giphy.tag +
-		"&rating=" +
-		giphy.rating
-);
-
-document.addEventListener('keyup', keyPressed);
-
-function keyPressed(event){
-	if (event.key === 'ArrowRight' && snake_dir_x !== -1){
-		snake_dir_y = 0;
-		snake_dir_x = 1;
-
-		shouldUpdateSnake = true;
-	}
-	else if (event.key === 'ArrowLeft' && snake_dir_x !== 1){
-		snake_dir_y = 0;
-		snake_dir_x = -1;
-		shouldUpdateSnake = true;
-	}
-	else if (event.key === 'ArrowDown' && snake_dir_y !== -1){
-		snake_dir_x = 0;
-		snake_dir_y = 1;
-		shouldUpdateSnake = true;
-	}
-	else if (event.key === 'ArrowUp' && snake_dir_y !== 1){
-		snake_dir_x = 0;
-		snake_dir_y = -1;
-		shouldUpdateSnake = true;
+class Point {
+	constructor(x, y) {
+		this.x = x;
+		this.y = y;
 	}
 }
 
+const SCALE_FACTOR = 20;
+const INIT_SNAKE_LENGTH = 5;
+const INIT_SNAKE_POSITION = new Point(5, 0);
+const SNAKE_PADDING = .1;
+const BOARD_SIZE = 25;
+const FRAME_WAIT_TIME = 200;
+
+const canvas = document.getElementById('snake_canvas');
+canvas.width = BOARD_SIZE*SCALE_FACTOR;
+canvas.height = BOARD_SIZE*SCALE_FACTOR;
+const ctx = canvas.getContext('2d');
+
+class Fruit {
+	constructor(position, painter) {
+		this.position = position;
+		this.painter = painter;
+	}
+}
+
+class Snake {
+	constructor(initHeadPos, initLength, painter) {
+		this.headPos = initHeadPos;
+		this.bodyPositions = [];
+		for (let i = 1; i <= initLength; i++)
+			this.bodyPositions.push(new Point(this.headPos.x - i, this.headPos.y));
+
+		this.direction = new Point(1, 0);
+		this.painter = painter;
+	}
+
+	updatePosition() {
+		this.bodyPositions.pop(this.bodyPositions.length - 1);
+		this.bodyPositions.unshift({...this.headPos}); // yikes
+		this.headPos.x += this.direction.x;
+		this.headPos.y += this.direction.y;
+	}
+
+	eatFruit(fruit) {
+		this.bodyPositions.push({...fruit.position});
+	}
+}
+
+class GameState {
+	constructor() {
+		this.snake = new Snake(
+			INIT_SNAKE_POSITION, 
+			INIT_SNAKE_LENGTH, 
+			drawSnake
+		);
+		this.fruit = new Fruit(
+			randomPointOutsideSnake(this.snake),
+			drawFruit
+		);
+		this.score = 0;
+		this.shouldUpdateSnake = false;
+		this.isGameOver = false;
+	}
+}
+
+function drawScaledPaddedUnitRectangleAt(ctx, x, y, color) {
+	ctx.fillStyle = color;
+	ctx.fillRect(
+		x*SCALE_FACTOR + SNAKE_PADDING*SCALE_FACTOR,
+		y*SCALE_FACTOR + SNAKE_PADDING*SCALE_FACTOR,
+		SCALE_FACTOR - SNAKE_PADDING*SCALE_FACTOR,
+		SCALE_FACTOR - SNAKE_PADDING*SCALE_FACTOR
+	)
+}
+
+function drawSnake(snake, ctx){
+	// draw head
+	drawScaledPaddedUnitRectangleAt(
+		ctx,
+		snake.headPos.x, 
+		snake.headPos.y, 
+		'blue'
+	);
+	// draw tail
+	for(let i = 0; i < snake.bodyPositions.length; i++){
+		drawScaledPaddedUnitRectangleAt(
+			ctx,
+			snake.bodyPositions[i].x,
+			snake.bodyPositions[i].y,
+			'lightblue'
+		)
+	}
+}
+
+function drawFruit(fruit){
+	drawScaledPaddedUnitRectangleAt(
+		ctx,
+		fruit.position.x,
+		fruit.position.y,
+		'red'
+	);
+}
+
+/**
+ * Input handling
+ */
+function handleInput(gameState){
+	return function(event) {
+		let snake = gameState.snake;
+
+		if (event.key === 'ArrowRight' && snake.direction.x !== -1){
+			snake.direction.x = 1;
+			snake.direction.y = 0;
+			gameState.shouldUpdateSnake = true;
+		}
+		else if (event.key === 'ArrowLeft' && snake.direction.x !== 1){
+			snake.direction.x = -1;
+			snake.direction.y = 0;
+			gameState.shouldUpdateSnake = true;
+		}
+		else if (event.key === 'ArrowDown' && snake.direction.y !== -1){
+			snake.direction.x = 0;
+			snake.direction.y = 1;
+			gameState.shouldUpdateSnake = true;
+		}
+		else if (event.key === 'ArrowUp' && snake.direction.y !== 1){
+			snake.direction.x = 0;
+			snake.direction.y = -1;
+			gameState.shouldUpdateSnake = true;
+		}
+	}
+}
+
+/**
+ * Generate random int between 0 and max (not inclusive)
+ */
 function getRandomInt(max) {
 	return Math.floor(Math.random() * Math.floor(max));
 }
 
-function drawSnake(){
-	// draw head
-	ctx.fillStyle = 'blue';
-	ctx.fillRect(head_x + snake_offset, head_y + snake_offset, snake_size - snake_offset, snake_size - snake_offset);
-	// draw tail
-	ctx.fillStyle = 'lightblue';
-	for(let i = 0; i < snakeBodyX.length; i++){
-		ctx.fillRect(snakeBodyX[i] + snake_offset, snakeBodyY[i] + snake_offset, snake_size - snake_offset, snake_size - snake_offset);
+function randomPointOutsideSnake(snake) {
+	if (snake.bodyPositions.length === BOARD_SIZE*BOARD_SIZE - 1)
+		return;
+
+	let candidate;
+	while(true) {
+		let failed = false;
+		candidate = new Point(getRandomInt(BOARD_SIZE), getRandomInt(BOARD_SIZE));
+
+		for (let snakePos of snake.bodyPositions.concat([snake.headPos]) ) {
+			if (snakePos.x === candidate.x && snakePos.y === candidate.y) {
+				failed = true;
+				break;
+			}
+		}
+
+		if (!failed)
+			break;
+	}
+
+	return candidate;
+}
+
+function detectFruitEaten(gameState){
+	let snake = gameState.snake;
+	let fruit = gameState.fruit;
+	if (snake.headPos.x === fruit.position.x &&
+		snake.headPos.y === fruit.position.y)
+	{
+		snake.eatFruit(fruit);
+		gameState.fruit = new Fruit(
+			randomPointOutsideSnake(snake),
+			drawFruit
+		)
+		gameState.score += 1;
 	}
 }
 
-function drawFruit(){
-	ctx.fillStyle = 'red';
-	ctx.fillRect(fruitX + snake_offset, fruitY + snake_offset, snake_size - snake_offset, snake_size - snake_offset);
-}
 
-const gif_window = document.getElementById('gif_window');
-async function detectFruitEaten(){
-	if (head_x === fruitX && head_y === fruitY){
-		snakeBodyX.push(fruitX);
-		snakeBodyY.push(fruitY);
-			fruitX = getRandomInt(25)*snake_size;
-		while([head_x, ...snakeBodyX].includes(fruitX)){
-			fruitX = getRandomInt(25)*snake_size;
-		}
-		fruitY = getRandomInt(25)*snake_size;
-		while([head_y, ...snakeBodyY].includes(fruitY)){
-			fruitY = getRandomInt(25)*snake_size;
-		}
-		fetch(giphyURL).then(resp => {
-			resp.json().then(json => {
-				gif_window.setAttribute("src", `${json.data.image_original_url}`);
-			});
-		});
-		punten += 1;
-	}
-}
 
-function updateSnake(){
-	snakeBodyX.pop(snakeBodyX.length - 1);
-	snakeBodyY.pop(snakeBodyX.length - 1);
-	snakeBodyX.unshift(head_x);
-	snakeBodyY.unshift(head_y);
-	head_x += snake_dir_x*snake_size;
-	head_y += snake_dir_y*snake_size;
-}
-
-function detectGameOver(){
-	return;
-	for(let i = 0; i < snakeBodyY.length; i++){
-		if (head_x === snakeBodyX[i] && head_y === snakeBodyY[i]){
-			gameOver = true;
-			alert("GAME OVER!");
+function detectGameOver(gameState){
+	let snake = gameState.snake;
+	for(let i = 0; i < snake.bodyPositions.length; i++){
+		if (snake.headPos.x === snake.bodyPositions[i].x 
+			&& snake.headPos.y === snake.bodyPositions[i].y)
+		{
+			gameState.isGameOver = true;
 		}
 	}
 	if (
-		head_x < 0 ||
-		head_y < 0 ||
-		head_x > 480 ||
-		head_y > 480){
-		gameOver = true;
-		alert("GAME OVER!");
+		snake.headPos.x < 0 ||
+		snake.headPos.y < 0 ||
+		snake.headPos.x > BOARD_SIZE - 1 ||
+		snake.headPos.y > BOARD_SIZE - 1){
+		gameState.isGameOver = true;
 	}
 }
 
-function setScoreText(){
+function setScoreText(score){
 	const scoreLabel = document.getElementById("score_label");
-	scoreLabel.innerText = `Score: ${punten}`
+	scoreLabel.innerText = `Score: ${score}`
 }
+
+let gameState = new GameState;
+document.addEventListener('keyup', handleInput(gameState));
+let previousUpdateTimestamp;
 
 function draw(timestamp){
-	if (shouldUpdateSnake || timestamp - lastUpdateTimestamp > 200){
-		updateSnake();
-		lastUpdateTimestamp = timestamp;
-		shouldUpdateSnake = false;
+	if (previousUpdateTimestamp === undefined) 
+		previousUpdateTimestamp = timestamp;
+
+	if (gameState.shouldUpdateSnake || timestamp - previousUpdateTimestamp > FRAME_WAIT_TIME){
+		detectFruitEaten(gameState);
+		gameState.snake.updatePosition();
+		previousUpdateTimestamp = timestamp;
+		gameState.shouldUpdateSnake = false;
 	}
 
+	detectGameOver(gameState);
+	// check game over before the next state is drawn
+	if (gameState.isGameOver)
+	{
+		alert("Game over your score was " + gameState.score)
+		document.location.reload()
+	}
+	
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	detectGameOver();
-	drawFruit();
-	drawSnake();
-	setScoreText();
-	detectFruitEaten();
-	window.requestAnimationFrame(draw);
+	
+	gameState.fruit.painter(gameState.fruit, ctx);
+	gameState.snake.painter(gameState.snake, ctx);
+	setScoreText(gameState.score);
+
+	if (!gameState.isGameOver)
+		window.requestAnimationFrame(draw);
 }
 
-draw();
+window.requestAnimationFrame(draw);
