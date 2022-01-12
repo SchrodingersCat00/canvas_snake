@@ -255,8 +255,8 @@ function draw(timestamp) {
 
     // check game over before the state is drawn
     if (gameState.isGameOver) {
-        // alert("Game over! Your score was: " + gameState.score)
-        // document.location.reload()
+        alert("Game over! Your score was: " + gameState.score)
+        document.location.reload()
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
