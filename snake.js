@@ -27,6 +27,14 @@ canvas.width = BOARD_SIZE * SCALE_FACTOR;
 canvas.height = BOARD_SIZE * SCALE_FACTOR;
 const ctx = canvas.getContext('2d');
 
+let oofSound = new Howl({
+    src: 'resources/oof.mp3'
+});
+
+let munchSound = new Howl({
+    src: 'resources/munch.mp3'
+})
+
 class Fruit {
     constructor(position, painter) {
         this.position = position;
@@ -71,6 +79,19 @@ class GameState {
         this.score = 0;
         this.shouldUpdateSnake = false;
         this.isGameOver = false;
+        this.eventListeners = {
+            'game_over': [],
+            'fruit_eaten': [],
+        };
+    }
+
+    addEventListener(type, cb) {
+        if (!Object.keys(this.eventListeners).includes(type)) {
+            console.log("Unknown eventlistener type: " + type);
+            return;
+        }
+        
+        this.eventListeners[type].push(cb);
     }
 }
 
@@ -167,12 +188,11 @@ function detectFruitEaten(gameState) {
     let snake = gameState.snake;
     let fruit = gameState.fruit;
     if (snake.headPos.equals(fruit.position)) {
-        snake.eatFruit(fruit);
+        gameState.eventListeners['fruit_eaten'].forEach(x => x(fruit));
         gameState.fruit = new Fruit(
             randomPointOutsideSnake(snake),
             drawFruit
         )
-        gameState.score += 1;
     }
 }
 
@@ -187,6 +207,11 @@ function detectGameOver(gameState) {
         snake.headPos.y > BOARD_SIZE - 1) {
         gameState.isGameOver = true;
     }
+
+    if (gameState.isGameOver)
+        gameState.eventListeners['game_over'].forEach(cb => {
+            cb()
+        });
 }
 
 function setScoreText(score) {
@@ -195,6 +220,23 @@ function setScoreText(score) {
 }
 
 let gameState = new GameState;
+gameState.addEventListener('game_over', function () {
+    oofSound.play();
+});
+
+gameState.addEventListener('fruit_eaten', function() {
+    gameState.score += 1;
+    setScoreText(gameState.score);
+});
+
+gameState.addEventListener('fruit_eaten', function(fruit) {
+    gameState.snake.eatFruit(fruit)
+});
+
+gameState.addEventListener('fruit_eaten', function() {
+    munchSound.play();
+});
+
 document.addEventListener('keydown', handleInput(gameState));
 let previousUpdateTimestamp;
 
@@ -213,18 +255,19 @@ function draw(timestamp) {
 
     // check game over before the state is drawn
     if (gameState.isGameOver) {
-        alert("Game over! Your score was: " + gameState.score)
-        document.location.reload()
+        // alert("Game over! Your score was: " + gameState.score)
+        // document.location.reload()
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     gameState.fruit.painter(gameState.fruit, ctx);
     gameState.snake.painter(gameState.snake, ctx);
-    setScoreText(gameState.score);
 
     if (!gameState.isGameOver)
         window.requestAnimationFrame(draw);
 }
+
+setScoreText(gameState.score);
 
 window.requestAnimationFrame(draw);
