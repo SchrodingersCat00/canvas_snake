@@ -39,7 +39,7 @@ class Snake {
 
 	updatePosition() {
 		this.bodyPositions.pop(this.bodyPositions.length - 1);
-		this.bodyPositions.unshift({...this.headPos}); // yikes
+		this.bodyPositions.unshift({...this.headPos});
 		this.headPos.x += this.direction.x;
 		this.headPos.y += this.direction.y;
 	}
@@ -220,10 +220,11 @@ function draw(timestamp){
 	}
 
 	detectGameOver(gameState);
-	// check game over before the next state is drawn
+
+	// check game over before the state is drawn
 	if (gameState.isGameOver)
 	{
-		alert("Game over your score was " + gameState.score)
+		alert("Game over! Your score was: " + gameState.score)
 		document.location.reload()
 	}
 	
